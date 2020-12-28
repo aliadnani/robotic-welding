@@ -1,0 +1,175 @@
+import sys
+sys.path.insert(0, "../lib")
+sys.path.insert(1, "../lib/x64")
+import urx
+import time
+import Leap
+import math
+import numpy as np
+import math3d as m3d
+from scipy.spatial.transform import Rotation as R
+
+# Converts URx's rotation vector into a rotation matrix
+#
+# I did not derive this nor do I fully understand the maths behind this :0
+# I took it from: https://dof.robotiq.com/discussion/1648/around-which-axes-are-the-rotation-vector-angles-defined
+def convert_tool_pose_to_transformation_matrix(tool_pose):
+    r = tool_pose[3:]
+    rx = r[0]
+    ry = r[1]
+    rz = r[2]
+
+    theta = math.sqrt((rx ** 2) + (ry ** 2) + (rz ** 2))
+
+    ux = rx / theta
+    uy = ry / theta
+    uz = rz / theta
+
+    c = math.cos(theta)
+    s = math.sin(theta)
+    C = 1 - c
+
+    base_to_tcp = tool_pose[:3]
+
+    T = np.array(
+        [
+            [
+                (ux * ux * C) + c,
+                (ux * uy * C) - (uz * s),
+                (ux * uz * C) + (uy * s),
+                base_to_tcp[0],
+            ],
+            [
+                (uy * ux * C) + (uz * s),
+                (uy * uy * C) + c,
+                (uy * uz * C) - (ux * s),
+                base_to_tcp[1],
+            ],
+            [
+                (uz * ux * C) - (uy * s),
+                (uz * uy * C) + (ux * s),
+                (uz * uz * C) + c,
+                base_to_tcp[2],
+            ],
+            [0, 0, 0, 1],
+        ]
+    )
+    return T
+
+def calculate_coordinate_system_from_hand():
+    pass
+
+def convert_coordinate_spaces_to_rotation_vector(A_prime):
+    A = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+    rotation_matrix = np.dot(A, np.linalg.inv(A_prime))
+    r = R.from_matrix(rotation_matrix)
+    return r.as_rotvec
+
+# Calculates hand position in absolute coordinates
+def calculate_hand_position(transformation_matrix, relative_palm_postion):
+    # Formats raw hand coordinates
+    hand_coordinates_raw = relative_palm_postion
+    # m to mm converstion
+    hand_coordinates = (np.array(hand_coordinates_raw) * [-1, -1, 1]) / 1000
+    
+    # Converts to auguemented position vector 
+    hand_coordinates = np.append(hand_coordinates, [1])
+
+    # Gets abolsolute matrix by transformation matrix multiplication
+    absolute_position = transformation_matrix.dot(hand_coordinates)
+    return np.round(absolute_position[:3], 3)
+
+
+def calculate_required_robot_position(absolute_hand_position, y_offset=0):
+    required_robot_position = absolute_hand_position + [0, 0.19, 0]
+    # required_robot_position = absolute_hand_position + y_offset
+    return required_robot_position
+
+
+def main():
+    # Leap motion 
+    controller = Leap.Controller()
+    controller.config.save()
+
+    # UR3 robot config
+    robot = urx.Robot("192.168.0.2")
+    mytcp = m3d.Transform()  # create a matrix for our tool tcp
+    mytcp.pos.x = -0.0002
+    mytcp.pos.y = -0.144
+    mytcp.pos.z = 0.05
+    time.sleep(1)
+    robot.set_tcp(mytcp)
+    time.sleep(1)
+
+    while 1:
+        try:
+            cartesian_info = robot.secmon.get_all_data()['CartesianInfo']
+            tool_pose = [cartesian_info['X'],cartesian_info['Y'],cartesian_info['Z'],cartesian_info['Rx'],cartesian_info['Ry'],cartesian_info['Rz']]
+            # tool_pose = [50, -600, -135, 0, 3.14, 0]
+            T = convert_tool_pose_to_transformation_matrix(tool_pose)
+
+            frame = controller.frame()
+            print(frame)
+            if len(frame.hands):
+                extended_finger_list = frame.fingers.extended()
+                number_extended_fingers = len(extended_finger_list)
+                if (
+                    number_extended_fingers != 5
+                ):
+                    pass
+                else:
+                    relative_palm_postion = list(frame.hands[0].palm_position.to_tuple())
+                    absolute_hand_position = calculate_hand_position(T, relative_palm_postion)
+
+                    required_robot_position = calculate_required_robot_position(absolute_hand_position)
+
+                    final_pose = list(required_robot_position)
+                    final_pose.extend(tool_pose[3:])
+
+                    pose_difference = np.linalg.norm(np.array(tool_pose[:3]) - np.array(required_robot_position))
+
+                    # Only moves robot if the move is greater than 5cm; reduces jitter this way
+                    if pose_difference > 0.005:
+                        print('\ncurrent_pose: %s' % (tool_pose))
+                        print('\nabsolute_hand_position: %s' % (absolute_hand_position))
+                        print('required_pose: %s' % (final_pose))
+                        print('pose_difference: %s' % (pose_difference))
+                        if pose_difference < 0.08:
+                            robot.movep(list(final_pose), acc=0.07, vel=0.12, wait=False)
+                        # pass
+
+                    # time.sleep(0.2)
+        except:
+            robot.close()
+            sys.exit(0)
+
+def get_hand_basis(basis):
+    pass
+
+def test_transform():
+    ### Orientation
+    # Get hand basis matrix
+    # Calculate hand basis in absolute frame
+    # Lock hand basis to Z-axis
+    # Flip x and y vectors of hand basis
+    # Solve rotation matrix from coordiante frame to hand basis
+    # convert rotation matrix to vector
+    # basis_x[2] = 0
+    # basis_y[2] = 0
+    # basis_z = [0, 0, 1]
+
+    ### Position
+    # Get palm normal in absolute frame from ^^ steps
+    # Get palm coordinates in abosulate frame
+    # Get coordinates of set distance from palm along palm normal
+
+    # Send pos and rotation matrix to UR robot 
+    
+    # Transform vectors to absolute
+    # right hand via c
+    pass
+
+
+if __name__ == "__main__":
+    # main()
+    test_transform()

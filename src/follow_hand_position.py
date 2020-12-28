@@ -14,47 +14,14 @@ from scipy.spatial.transform import Rotation as R
 # I did not derive this nor do I fully understand the maths behind this :0
 # I took it from: https://dof.robotiq.com/discussion/1648/around-which-axes-are-the-rotation-vector-angles-defined
 def convert_tool_pose_to_transformation_matrix(tool_pose):
-    r = tool_pose[3:]
-    rx = r[0]
-    ry = r[1]
-    rz = r[2]
+    position_vector = np.array(tool_pose[:3]).reshape((3,1))
+    rotation_vector = np.array(tool_pose[3:])
+    
+    rotation_matrix = R.from_rotvec(rotation_vector).as_dcm()
 
-    theta = math.sqrt((rx ** 2) + (ry ** 2) + (rz ** 2))
-
-    ux = rx / theta
-    uy = ry / theta
-    uz = rz / theta
-
-    c = math.cos(theta)
-    s = math.sin(theta)
-    C = 1 - c
-
-    base_to_tcp = tool_pose[:3]
-
-    T = np.array(
-        [
-            [
-                (ux * ux * C) + c,
-                (ux * uy * C) - (uz * s),
-                (ux * uz * C) + (uy * s),
-                base_to_tcp[0],
-            ],
-            [
-                (uy * ux * C) + (uz * s),
-                (uy * uy * C) + c,
-                (uy * uz * C) - (ux * s),
-                base_to_tcp[1],
-            ],
-            [
-                (uz * ux * C) - (uy * s),
-                (uz * uy * C) + (ux * s),
-                (uz * uz * C) + c,
-                base_to_tcp[2],
-            ],
-            [0, 0, 0, 1],
-        ]
-    )
-    return T
+    transformation_matrix = np.append(rotation_matrix, position_vector, axis = 1)
+    transformation_matrix = np.append(transformation_matrix ,np.array([[0,0,0,1]]), axis=0)
+    return transformation_matrix
 
 def calculate_coordinate_system_from_hand():
     pass
@@ -114,7 +81,7 @@ def main():
         try:
             tool_pose = get_tool_pose(robot)
             T = convert_tool_pose_to_transformation_matrix(tool_pose)
-
+            # print(T)
             frame = controller.frame()
             if len(frame.hands):
                 extended_finger_list = frame.fingers.extended()
@@ -142,6 +109,7 @@ def main():
                         print('pose_difference: %s' % (pose_difference))
                         # Only moves robot if move is smaller than 8cm, minimizes robot moving in strange directions
                         if pose_difference < 0.08:
+                            # print(T)
                             robot.movep(list(final_pose), acc=0.1, vel=0.2, wait=False)
 
         except:

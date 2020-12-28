@@ -85,6 +85,15 @@ def calculate_required_robot_position(absolute_hand_position, y_offset=0):
     # required_robot_position = absolute_hand_position + y_offset
     return required_robot_position
 
+def get_tool_pose(robot):
+    cartesian_info = robot.secmon.get_all_data()['CartesianInfo']
+    tool_pose = [cartesian_info['X'],cartesian_info['Y'],cartesian_info['Z'],cartesian_info['Rx'],cartesian_info['Ry'],cartesian_info['Rz']]
+    # tool_pose = [50, -600, -135, 0, 3.14, 0]
+    return tool_pose
+
+def read_hand_position(frame):
+    return list(frame.hands[0].palm_position.to_tuple())
+
 
 def main():
     # Leap motion 
@@ -103,13 +112,10 @@ def main():
 
     while 1:
         try:
-            cartesian_info = robot.secmon.get_all_data()['CartesianInfo']
-            tool_pose = [cartesian_info['X'],cartesian_info['Y'],cartesian_info['Z'],cartesian_info['Rx'],cartesian_info['Ry'],cartesian_info['Rz']]
-            # tool_pose = [50, -600, -135, 0, 3.14, 0]
+            tool_pose = get_tool_pose(robot)
             T = convert_tool_pose_to_transformation_matrix(tool_pose)
 
             frame = controller.frame()
-            print(frame)
             if len(frame.hands):
                 extended_finger_list = frame.fingers.extended()
                 number_extended_fingers = len(extended_finger_list)
@@ -118,7 +124,7 @@ def main():
                 ):
                     pass
                 else:
-                    relative_palm_postion = list(frame.hands[0].palm_position.to_tuple())
+                    relative_palm_postion = read_hand_position(frame)
                     absolute_hand_position = calculate_hand_position(T, relative_palm_postion)
 
                     required_robot_position = calculate_required_robot_position(absolute_hand_position)
@@ -128,20 +134,20 @@ def main():
 
                     pose_difference = np.linalg.norm(np.array(tool_pose[:3]) - np.array(required_robot_position))
 
-                    # Only moves robot if the move is greater than 5cm; reduces jitter this way
+                    # Only moves robot if the move is greater than 0.5cm; reduces jitter this way
                     if pose_difference > 0.005:
                         print('\ncurrent_pose: %s' % (tool_pose))
                         print('\nabsolute_hand_position: %s' % (absolute_hand_position))
                         print('required_pose: %s' % (final_pose))
                         print('pose_difference: %s' % (pose_difference))
+                        # Only moves robot if move is smaller than 8cm, minimizes robot moving in strange directions
                         if pose_difference < 0.08:
-                            robot.movep(list(final_pose), acc=0.07, vel=0.12, wait=False)
-                        # pass
+                            robot.movep(list(final_pose), acc=0.1, vel=0.2, wait=False)
 
-                    # time.sleep(0.2)
         except:
             robot.close()
             sys.exit(0)
+
 
 def get_hand_basis(basis):
     pass
@@ -171,5 +177,5 @@ def test_transform():
 
 
 if __name__ == "__main__":
-    # main()
-    test_transform()
+    main()
+    # test_transform()

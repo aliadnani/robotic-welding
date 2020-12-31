@@ -172,10 +172,8 @@ def main():
     while 1:
         try:
             # Object containing all data tracked by Leap Motion Camera
-            # formatted_frame, previous_palm_position = get_unique_frame(
-            #     controller, previous_palm_position
-            # )
 
+            # Get frame list
             frame_list = get_frame_list(controller, frame_list, previous_palm_position)
             formatted_frame = average_frame_list(frame_list)
             # Extracts information from frame and stores it in dict
@@ -257,7 +255,22 @@ def main():
                     np.append(required_robot_position, wanted_rotation_vector)
                 )
 
-                robot.movep(final_pose, acc=0.13, vel=0.13, wait=False)
+                rotation_difference = np.dot(
+                    rotation_object.as_dcm().T,
+                    R.from_rotvec(wanted_rotation_vector).as_dcm(),
+                )
+
+                angular_difference = np.rad2deg(
+                    np.arccos((np.trace(rotation_difference) - 1) / 2)
+                )
+
+                position_difference = np.linalg.norm(np.array(tool_pose[:3]) - np.array(required_robot_position))
+                print('angular difference: %s' % (angular_difference))
+                print('position difference: %s' % (position_difference))
+                if angular_difference > 2 or position_difference > 0.005:
+                    robot.movep(final_pose, acc=0.1, vel=0.1, wait=False)
+                else:
+                    print("position/angular difference not big enough, robot not moved!")
                 print(wanted_basis_x_ignored)
                 print(list(wanted_rotation_vector))
                 print("\n--------------------------------------\n")

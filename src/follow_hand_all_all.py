@@ -10,6 +10,7 @@ import math
 import numpy as np
 import math3d as m3d
 from scipy.spatial.transform import Rotation as R
+import traceback
 
 np.set_printoptions(precision=4, suppress=True)
 
@@ -105,27 +106,50 @@ def format_frame(frame):
     return formatted_frame
 
 
-def get_frame_list(controller, frame_list):
-    if len(frame_list) < 5:
-        while len(frame_list) < 5:
+def get_frame_list(controller, frame_list, previous_palm_position):
+    if len(frame_list) < 3:
+        while len(frame_list) < 3:
             frame, previous_palm_position = get_unique_frame(
                 controller, previous_palm_position
             )
-            frame_list.append(frame)
+            formatted_frame = format_frame(frame)
+            frame_list.append(formatted_frame)
     else:
         frame_list.pop(0)
 
         frame, previous_palm_position = get_unique_frame(
             controller, previous_palm_position
         )
-        frame_list.append(frame)
+        formatted_frame = format_frame(frame)
+        frame_list.append(formatted_frame)
 
+    # average_frame = frame_list[-1]
+    return frame_list
+
+
+def average_frame_list(frame_list):
     average_frame = frame_list[-1]
-    pass
+    average_basis = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
+    average_position = [0, 0, 0]
+    # Sum all calues across frames
+    for frame in frame_list:
+        for i in range(len(average_position)):
+            average_position[i] += frame["hand_position"][i]
+        for i in range(len(frame["basis"])):
+            for j in range(len(average_basis[i])):
+                average_basis[i][j] += frame["basis"][i][j]
 
+    # Average values by dividing by count
+    average_basis = [
+        [vector_component / len(frame_list) for vector_component in vector]
+        for vector in average_basis
+    ]
 
-def smooth_frame_data(frame_list):
-    pass
+    # Edit the returned array
+    average_position = [i / len(frame_list) for i in average_position]
+    average_frame["basis"] = average_basis
+    average_frame["position"] = average_position
+    return average_frame
 
 
 def main():
@@ -143,16 +167,20 @@ def main():
     mytcp.pos.y = -0.144
     mytcp.pos.z = 0.05
     robot.set_tcp(mytcp)
+    frame_list = []
     previous_palm_position = ("ahahahaha", "haha")
     while 1:
         try:
             # Object containing all data tracked by Leap Motion Camera
-            frame, previous_palm_position = get_unique_frame(
-                controller, previous_palm_position
-            )
+            # formatted_frame, previous_palm_position = get_unique_frame(
+            #     controller, previous_palm_position
+            # )
+
+            frame_list = get_frame_list(controller, frame_list, previous_palm_position)
+            formatted_frame = average_frame_list(frame_list)
             # Extracts information from frame and stores it in dict
             # makes data averageing and filtering data easier
-            formatted_frame = format_frame(frame)
+            # formatted_frame = format_frame(frame)
 
             # A custom function is used to get the tool pose as urx's get_pose() function does not return the
             # orientation as displayed on the pendant
@@ -161,17 +189,21 @@ def main():
             # Hand basis vectors:
             # 1: Vector from palm to pinky direction
             # 2: Vector from palm to backhand
-            # 3: Vector from palm down to wrist 
+            # 3: Vector from palm down to wrist
             basis = get_hand_basis(formatted_frame)
+            print(basis)
 
             # Will not track if left hand or is closed!
             # Prevents robot accidentally detecting the right hand as left
             # TO-DO: Make this more robust
             if (
-                formatted_frame['is_left']
-                or len(formatted_frame['extended_fingers_list']) != 5
+                formatted_frame["is_left"]
+                or len(formatted_frame["extended_fingers_list"]) != 5
             ):
-                print("no_instruction")
+                if formatted_frame["is_left"]:
+                    print("Not Following left hand :0")
+                if len(formatted_frame["extended_fingers_list"]) != 5:
+                    print("Fully open your hand to track :)")
             else:
                 # Rotation object from base to TCP
                 rotation_object = calculate_rotation_object(tool_pose[3:]).inv()
@@ -185,7 +217,7 @@ def main():
                 # Calculate absolute hand pose with respect to base
                 hand_basis_absolute = rotation_object.inv().apply(hand_basis_flipped)
 
-                # Get the wanted pose of the robot by rotating the absolute hand pose  
+                # Get the wanted pose of the robot by rotating the absolute hand pose
                 # i.e.: the hand pose is looking at the robot, we want the pose of the robot looking back
                 wanted_basis = hand_basis_absolute
                 wanted_basis[0] = wanted_basis[0] * -1
@@ -202,7 +234,7 @@ def main():
                 # For some reason X-axis orientation is not ignored??
                 # but the desired orientation is mirrored :0
                 # Setting the X component of the Z basis to negative fixes this for some reason?
-                # I don't know why, will investigate 
+                # I don't know why, will investigate
                 wanted_basis_x_ignored[2][0] = wanted_basis_x_ignored[2][0] * -1
 
                 # Converts our wanted basis into a rotation vector the UR robot understands
@@ -225,13 +257,15 @@ def main():
                     np.append(required_robot_position, wanted_rotation_vector)
                 )
 
-                # Moves robot
-                robot.movep(final_pose, acc=0.08, vel=0.08, wait=False)
-                print(final_pose)
+                robot.movep(final_pose, acc=0.13, vel=0.13, wait=False)
+                print(wanted_basis_x_ignored)
                 print(list(wanted_rotation_vector))
                 print("\n--------------------------------------\n")
+                # time.sleep(0.5)
 
+        # except Exception:
         except:
+            # print(traceback.format_exc())
             robot.close()
             os._exit
             sys.exit(0)

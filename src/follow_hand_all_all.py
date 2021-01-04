@@ -11,6 +11,7 @@ import numpy as np
 import math3d as m3d
 from scipy.spatial.transform import Rotation as R
 import traceback
+import json
 
 np.set_printoptions(precision=4, suppress=True)
 
@@ -36,7 +37,6 @@ def calculate_rotation_object(rotation_vector):
     return R.from_rotvec(np.array(rotation_vector))
 
 
-# Calculates hand position in absolute coordinates
 def calculate_hand_position(transformation_matrix, relative_palm_postion):
 
     # TCP to camera axis orientation && m to mm coversion
@@ -151,6 +151,10 @@ def average_frame_list(frame_list):
     average_frame["position"] = average_position
     return average_frame
 
+def read_config_file():
+    with open('config.json') as json_file: 
+        config = json.load(json_file) 
+    return config
 
 def main():
     # Leap motion setup
@@ -169,7 +173,16 @@ def main():
     robot.set_tcp(mytcp)
     frame_list = []
     previous_palm_position = ("ahahahaha", "haha")
+    config = read_config_file()
+    last_config_poll_time = 0
     while 1:
+        if time.time() - last_config_poll_time > 1:
+            last_config_poll_time = time.time()
+            config = read_config_file()
+
+        if config['follow_hand_mode'] == 'off':
+            time.sleep(1.1)
+            continue
         try:
             # Object containing all data tracked by Leap Motion Camera
 
@@ -221,22 +234,46 @@ def main():
                 wanted_basis[0] = wanted_basis[0] * -1
                 wanted_basis[1] = wanted_basis[1] * -1
 
-                # X-orientation of hand pose in previous step is broken
-                # We ignore it by setting the top right matrix element to 0
-                wanted_basis_x_ignored = wanted_basis
-                wanted_basis_x_ignored[0][2] = 0
-                wanted_basis_x_ignored[0] = wanted_basis_x_ignored[0] / np.linalg.norm(
-                    wanted_basis_x_ignored[0]
-                )
+                # Here we determine which kind of hand-tracking mode we are to use:
+                # i.e.: robot positioning (yaw only) or groove scanning (yaw and roll)
+                if config['follow_hand_mode'] == 'scanning':
+                    # X-orientation of hand pose in previous step is broken
+                    # We ignore it by setting the top right matrix element to 0
+                    wanted_basis_final = wanted_basis
+                    wanted_basis_final[0][2] = 0
+                    wanted_basis_final[0] = wanted_basis_final[0] / np.linalg.norm(
+                        wanted_basis_final[0]
+                    )
 
-                # For some reason X-axis orientation is not ignored??
-                # but the desired orientation is mirrored :0
-                # Setting the X component of the Z basis to negative fixes this for some reason?
-                # I don't know why, will investigate
-                wanted_basis_x_ignored[2][0] = wanted_basis_x_ignored[2][0] * -1
+                    # For some reason X-axis orientation is not ignored??
+                    # but the desired orientation is mirrored :0
+                    # Setting the X component of the Z basis to negative fixes this for some reason?
+                    # I don't know why, will investigate
+                    wanted_basis_final[2][0] = wanted_basis_final[2][0] * -1
+
+                elif config['follow_hand_mode'] == 'positioning':
+                    # X-orientation of hand pose in previous step is broken
+                    # We ignore it by setting the top right matrix element to 0
+                    wanted_basis_final = wanted_basis
+                    wanted_basis_final[2][0] = 0
+                    wanted_basis_final[2][1] = 0
+                    wanted_basis_final[2][2] = -1
+
+                    wanted_basis_final[0][2] = 0
+                    wanted_basis_final[1][2] = 0
+
+                    wanted_basis_final[0] = wanted_basis_final[0] / np.linalg.norm(
+                        wanted_basis_final[0]
+                    )
+                    wanted_basis_final[1] = wanted_basis_final[1] / np.linalg.norm(
+                        wanted_basis_final[1]
+                    )
+                    wanted_basis_final[2] = wanted_basis_final[2] / np.linalg.norm(
+                        wanted_basis_final[2]
+                    )
 
                 # Converts our wanted basis into a rotation vector the UR robot understands
-                wanted_rotation_vector = R.from_dcm(wanted_basis_x_ignored).as_rotvec()
+                wanted_rotation_vector = R.from_dcm(wanted_basis_final).as_rotvec()
 
                 # Gets the absoulte position of hand
                 relative_palm_postion = read_hand_position(formatted_frame)
@@ -246,7 +283,7 @@ def main():
                 )
 
                 # Gets the wanted robot position at distance from palm
-                required_robot_position = (wanted_basis_x_ignored[1] * 0.19) + np.array(
+                required_robot_position = (wanted_basis_final[1] * 0.19) + np.array(
                     absolute_hand_position
                 )
 
@@ -271,10 +308,9 @@ def main():
                     robot.movep(final_pose, acc=0.1, vel=0.1, wait=False)
                 else:
                     print("position/angular difference not big enough, robot not moved!")
-                print(wanted_basis_x_ignored)
-                print(list(wanted_rotation_vector))
-                print("\n--------------------------------------\n")
-                # time.sleep(0.5)
+                # print(wanted_basis_final)
+                # print(list(wanted_rotation_vector))
+                # print("\n--------------------------------------\n")
 
         # except Exception:
         except:

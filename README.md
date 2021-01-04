@@ -1,5 +1,7 @@
 # Robotic Welding Human-Robot Interaction
 
+![](./demo.gif)
+
 ## Requirements
 
 - Leap Motion SDK & Drivers

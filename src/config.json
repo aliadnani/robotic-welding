@@ -1,6 +1,6 @@
 {
     "moving_average_filter": true, 
-    "follow_hand_mode": "scanning", 
+    "follow_hand_mode": "off", 
     "speeds": {
         "scanning": {
             "acc": 0.04, 

@@ -8,15 +8,32 @@ import Leap
 import numpy as np
 from scipy.signal import find_peaks
 import matplotlib.pyplot as plt
+import json
+
+
+def read_config_file():
+    with open("config.json") as json_file:
+        config = json.load(json_file)
+    return config
 
 
 def main():
     # Initialize leap motion controller object
     controller = Leap.Controller()
-
+    last_config_poll_time = 0
+    follow_hand_mode = read_config_file()["follow_hand_mode"]
     # Breaks loop and stops script when wave is detected
     wave_detected = False
-    while not wave_detected:
+    while 1:
+        if time.time() - last_config_poll_time > 1:
+            last_config_poll_time = time.time()
+            follow_hand_mode = read_config_file()["follow_hand_mode"]
+
+        if follow_hand_mode != "off":
+            time.sleep(1.1)
+            print("Not off!")
+            continue
+
         # Initialize arrays for storing hand orientation data
         hand_direction_x = []
         hand_direction_y = []
@@ -92,15 +109,20 @@ def main():
         )
         if wave_detected:
             print("\nHand wave detected! :) \n")
-            print(len(hand_direction_x))
-            print(len(angle_array))
-            plt.plot(angle_array, "r-")
-            plt.plot(peaks, angle_array[peaks], "x")
-            plt.plot(troughs, angle_array[troughs], "o")
-            plt.show()
+            config = read_config_file()
+            config['follow_hand_mode'] = 'positioning'
+            with open("config.json", "w") as json_file:
+                json.dump(config, json_file, indent=4)
+            time.sleep(1.1)
+            # print(len(hand_direction_x))
+            # print(len(angle_array))
+            # plt.plot(angle_array, "r-")
+            # plt.plot(peaks, angle_array[peaks], "x")
+            # plt.plot(troughs, angle_array[troughs], "o")
+            # plt.show()
         else:
             print("No hand wave detected :(")
-
+        
 
 if __name__ == "__main__":
     main()

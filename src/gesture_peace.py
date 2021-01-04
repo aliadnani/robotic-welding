@@ -78,6 +78,7 @@ def main():
                 if peace_extended == True and time.time() - peace_extended_time > 1:
                     print("Peace Sign!!!")
                     config = read_config_file()
+                    config['follow_hand_mode'] = 'scanning'
                     with open("config.json", "w") as json_file:
                         json.dump(config, json_file, indent=4)
                     time.sleep(1.1)

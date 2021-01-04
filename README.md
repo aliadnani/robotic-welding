@@ -1,30 +1,22 @@
-# Recognize OK Gesture
+# Robotic Welding Human-Robot Interaction
 
-**OK gesture is recognized on the following conditions**
-1. 3rd, 4th, 5th fingers are pointing roughly in the same direction
-   - Compare finger vectors
-2. 3rd, 4th, 5th fingers' are between slightly bent to straight
-   - Compare Euclidian distance vs Joint distance
-3. 3rd, 4th, 5th fingers are roughly inline with palm
-4. 1st & 2nd finger distance is almost Zero
-   - Leap Motion SDKs
-5. 1st and 2nd finger joints are almost coplanar
-   - Maybe difficult to do?
-6. 1st and 2nd finger joints resemble a circle
-   - https://github.com/AlliedToasters/circle-fit
+## Requirements
 
+- Leap Motion SDK & Drivers
+  - the ./lib in this repo specifies windows drivers, please add your own if running Linux/Mac
+- Custom URX Python Package from https://github.com/jkur/python-urx/tree/SW3.5/urx
+  - Because the one from pip is not updated :(
+- Python 2.7
+- Everything in `requirements.txt`
 
+## Interaction Workflow
 
-Follow hand
+1. Robot is stopped
+   1. Wave to the Leap Motion sensor to enable 'positioning' mode
+   2. 'Positioning' mode is a fast 1 DOF (yaw) robot control mode that tracks your palm position and normal and is used to quickly position the robot close to the groove to be welded
+2. Robot is positioning
+   1. Make a peace sign to start 'scanning mode'
+   2. 'Scanning' mode is a slower 2 DOF (yaw & pitch) robot that tracks your palm position, normal and fingers' direction to accurately maneuver the robot to scan a 3D point cloud of the groove.
+3. Robot is scanning
+   1. When done scanning, close your hand into a fist to stop scanning.
 
-Get absolute position of human hand using Leap motion and UR Robot Arm telemetry
-Make Arm follow position?
-
-Follow hand WHILE hand is making a pointing gesture
-Collect time-series data of index finger position and direction it is pointing
-When hand is not making a pointing gesture anymore, retrace the index finger position and pointing with the RGBD Camera
-Return to home position
-
-Recognize pointing gesture 
-1. 2nd finger straight
-2. All other joints are quite close to each other

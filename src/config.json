@@ -1,0 +1,15 @@
+{
+    "moving_average_filter": true, 
+    "follow_hand_mode": "scanning", 
+    "speeds": {
+        "scanning": {
+            "acc": 0.04, 
+            "vel": 0.04
+        }, 
+        "positioning": {
+            "acc": 0.04, 
+            "vel": 0.04
+        }
+    }, 
+    "verbose": true
+}

@@ -5,9 +5,16 @@ sys.path.insert(1, "../lib/x64")
 
 import time
 import Leap
+import json
 import numpy as np
 from scipy.signal import find_peaks
 import matplotlib.pyplot as plt
+
+
+def read_config_file():
+    with open("config.json") as json_file:
+        config = json.load(json_file)
+    return config
 
 
 def main():
@@ -16,7 +23,18 @@ def main():
     controller.config.save()
     peace_extended = False
     peace_extended_time = 0
+    last_config_poll_time = 0
+    follow_hand_mode = read_config_file()["follow_hand_mode"]
     while 1:
+        if time.time() - last_config_poll_time > 1:
+            last_config_poll_time = time.time()
+            follow_hand_mode = read_config_file()["follow_hand_mode"]
+
+        if follow_hand_mode != "positioning":
+            time.sleep(1.1)
+            print("Not positioning!")
+            continue
+
         frame = controller.frame()
         if len(frame.hands):
             extended_finger_list = frame.fingers.extended()
@@ -59,6 +77,10 @@ def main():
                 peace_extended = True
                 if peace_extended == True and time.time() - peace_extended_time > 1:
                     print("Peace Sign!!!")
+                    config = read_config_file()
+                    with open("config.json", "w") as json_file:
+                        json.dump(config, json_file, indent=4)
+                    time.sleep(1.1)
                 else:
                     print("Pending peace sign :0")
                 # print(index_middle_tip_distance)

@@ -10,10 +10,12 @@ from scipy.signal import find_peaks
 import matplotlib.pyplot as plt
 import json
 
+
 def read_config_file():
     with open("config.json") as json_file:
         config = json.load(json_file)
     return config
+
 
 def main():
     controller = Leap.Controller()
@@ -28,9 +30,9 @@ def main():
             last_config_poll_time = time.time()
             follow_hand_mode = read_config_file()["follow_hand_mode"]
 
-        if follow_hand_mode != "scanning":
+        if follow_hand_mode != "2dof":
             time.sleep(1.1)
-            print("Not scanning!")
+            print("Not 2dof!")
 
             continue
         frame = controller.frame()
@@ -44,7 +46,8 @@ def main():
                 if closed_hand == True and time.time() - closed_hand_time > 1:
                     print("Closed Hand")
                     config = read_config_file()
-                    config['follow_hand_mode'] = 'off'
+                    config["prev_follow_hand_mode"] = "2dof"
+                    config["follow_hand_mode"] = "off"
                     with open("config.json", "w") as json_file:
                         json.dump(config, json_file, indent=4)
                     time.sleep(1.1)
@@ -58,5 +61,5 @@ def main():
             # print(len(extended_finger_list))
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+main()

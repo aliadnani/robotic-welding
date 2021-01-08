@@ -57,6 +57,8 @@ def calculate_required_robot_position(absolute_hand_position, y_offset=0):
 
 
 def get_tool_pose(robot):
+    # A custom function is used to get the tool pose as urx's get_pose() function does not return the
+    # orientation as displayed on the pendant
     cartesian_info = robot.secmon.get_all_data()["CartesianInfo"]
     tool_pose = [
         cartesian_info["X"],
@@ -74,6 +76,10 @@ def read_hand_position(frame):
 
 
 def get_hand_basis(frame):
+    # Hand basis vectors:
+    # 1: Vector from palm to pinky direction
+    # 2: Vector from palm to backhand
+    # 3: Vector from palm down to wrist
     return frame["basis"]
 
 
@@ -151,10 +157,52 @@ def average_frame_list(frame_list):
     average_frame["position"] = average_position
     return average_frame
 
+
 def read_config_file():
-    with open('config.json') as json_file: 
-        config = json.load(json_file) 
+    with open("config.json") as json_file:
+        config = json.load(json_file)
     return config
+
+
+def get_basis_2dof(wanted_basis):
+    # X-orientation of hand pose in previous step is broken
+    # We ignore it by setting the top right matrix element to 0
+    wanted_basis_final = wanted_basis
+    wanted_basis_final[0][2] = 0
+    wanted_basis_final[0] = wanted_basis_final[0] / np.linalg.norm(
+        wanted_basis_final[0]
+    )
+
+    # For some reason X-axis orientation is not ignored??
+    # but the desired orientation is mirrored :0
+    # Setting the X component of the Z basis to negative fixes this for some reason?
+    # I don't know why, will investigate
+    wanted_basis_final[2][0] = wanted_basis_final[2][0] * -1
+    return wanted_basis_final
+
+
+def get_basis_positioning(wanted_basis):
+    # X-orientation of hand pose in previous step is broken
+    # We ignore it by setting the top right matrix element to 0
+    wanted_basis_final = wanted_basis
+    wanted_basis_final[2][0] = 0
+    wanted_basis_final[2][1] = 0
+    wanted_basis_final[2][2] = -1
+
+    wanted_basis_final[0][2] = 0
+    wanted_basis_final[1][2] = 0
+
+    wanted_basis_final[0] = wanted_basis_final[0] / np.linalg.norm(
+        wanted_basis_final[0]
+    )
+    wanted_basis_final[1] = wanted_basis_final[1] / np.linalg.norm(
+        wanted_basis_final[1]
+    )
+    wanted_basis_final[2] = wanted_basis_final[2] / np.linalg.norm(
+        wanted_basis_final[2]
+    )
+    return wanted_basis
+
 
 def main():
     # Leap motion setup
@@ -165,11 +213,12 @@ def main():
     robot = urx.Robot("192.168.0.2")
     time.sleep(1)
 
-    # Set up tool TCP to leap motion position
+    # Set up tool TCP to sealer position
+    # Will result in wrong hand position but correct sealer position, no effect on usage  
     mytcp = m3d.Transform()
     mytcp.pos.x = -0.0002
-    mytcp.pos.y = -0.144
-    mytcp.pos.z = 0.05
+    mytcp.pos.y = -0.09302
+    mytcp.pos.z = 0.32591
     robot.set_tcp(mytcp)
     frame_list = []
     previous_palm_position = ("ahahahaha", "haha")
@@ -180,7 +229,7 @@ def main():
             last_config_poll_time = time.time()
             config = read_config_file()
 
-        if config['follow_hand_mode'] == 'off':
+        if config["follow_hand_mode"] == "off":
             time.sleep(1.1)
             continue
         try:
@@ -193,14 +242,8 @@ def main():
             # makes data averageing and filtering data easier
             # formatted_frame = format_frame(frame)
 
-            # A custom function is used to get the tool pose as urx's get_pose() function does not return the
-            # orientation as displayed on the pendant
             tool_pose = get_tool_pose(robot)
 
-            # Hand basis vectors:
-            # 1: Vector from palm to pinky direction
-            # 2: Vector from palm to backhand
-            # 3: Vector from palm down to wrist
             basis = get_hand_basis(formatted_frame)
             print(basis)
 
@@ -235,42 +278,12 @@ def main():
                 wanted_basis[1] = wanted_basis[1] * -1
 
                 # Here we determine which kind of hand-tracking mode we are to use:
-                # i.e.: robot positioning (yaw only) or groove scanning (yaw and roll)
-                if config['follow_hand_mode'] == 'scanning':
-                    # X-orientation of hand pose in previous step is broken
-                    # We ignore it by setting the top right matrix element to 0
-                    wanted_basis_final = wanted_basis
-                    wanted_basis_final[0][2] = 0
-                    wanted_basis_final[0] = wanted_basis_final[0] / np.linalg.norm(
-                        wanted_basis_final[0]
-                    )
+                # i.e.: robot positioning (yaw only) or groove 2dof (yaw and roll)
+                if config["follow_hand_mode"] == "2dof" or 'scanning':
+                    wanted_basis_final = get_basis_2dof(wanted_basis)
 
-                    # For some reason X-axis orientation is not ignored??
-                    # but the desired orientation is mirrored :0
-                    # Setting the X component of the Z basis to negative fixes this for some reason?
-                    # I don't know why, will investigate
-                    wanted_basis_final[2][0] = wanted_basis_final[2][0] * -1
-
-                elif config['follow_hand_mode'] == 'positioning':
-                    # X-orientation of hand pose in previous step is broken
-                    # We ignore it by setting the top right matrix element to 0
-                    wanted_basis_final = wanted_basis
-                    wanted_basis_final[2][0] = 0
-                    wanted_basis_final[2][1] = 0
-                    wanted_basis_final[2][2] = -1
-
-                    wanted_basis_final[0][2] = 0
-                    wanted_basis_final[1][2] = 0
-
-                    wanted_basis_final[0] = wanted_basis_final[0] / np.linalg.norm(
-                        wanted_basis_final[0]
-                    )
-                    wanted_basis_final[1] = wanted_basis_final[1] / np.linalg.norm(
-                        wanted_basis_final[1]
-                    )
-                    wanted_basis_final[2] = wanted_basis_final[2] / np.linalg.norm(
-                        wanted_basis_final[2]
-                    )
+                elif config["follow_hand_mode"] == "positioning":
+                    wanted_basis_final = get_basis_positioning(wanted_basis)
 
                 # Converts our wanted basis into a rotation vector the UR robot understands
                 wanted_rotation_vector = R.from_dcm(wanted_basis_final).as_rotvec()
@@ -301,16 +314,23 @@ def main():
                     np.arccos((np.trace(rotation_difference) - 1) / 2)
                 )
 
-                position_difference = np.linalg.norm(np.array(tool_pose[:3]) - np.array(required_robot_position))
-                print('angular difference: %s' % (angular_difference))
-                print('position difference: %s' % (position_difference))
+                position_difference = np.linalg.norm(
+                    np.array(tool_pose[:3]) - np.array(required_robot_position)
+                )
+                # print(get_tool_position(mytcp, robot))
+
+                print("Tool position: %s" % (tool_pose[:3]))
+                print("angular difference: %s" % (angular_difference))
+                print("position difference: %s" % (position_difference))
                 if angular_difference > 2 or position_difference > 0.005:
-                    robot.movep(final_pose, acc=0.1, vel=0.1, wait=False)
+                    robot.movep(final_pose, acc=0.07, vel=0.07, wait=False)
                 else:
-                    print("position/angular difference not big enough, robot not moved!")
-                # print(wanted_basis_final)
-                # print(list(wanted_rotation_vector))
-                # print("\n--------------------------------------\n")
+                    print(
+                        "position/angular difference not big enough, robot not moved!"
+                    )
+                print(wanted_basis_final)
+                print(list(wanted_rotation_vector))
+                print("\n--------------------------------------\n")
 
         # except Exception:
         except:

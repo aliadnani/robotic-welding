@@ -30,9 +30,9 @@ def main():
             last_config_poll_time = time.time()
             follow_hand_mode = read_config_file()["follow_hand_mode"]
 
-        if follow_hand_mode != "2dof":
+        if follow_hand_mode != "scanning":
             time.sleep(1.1)
-            print("Not 2dof!")
+            print("Not scanning!")
 
             continue
         frame = controller.frame()
@@ -46,7 +46,7 @@ def main():
                 if closed_hand == True and time.time() - closed_hand_time > 1:
                     print("Closed Hand")
                     config = read_config_file()
-                    config["prev_follow_hand_mode"] = "2dof"
+                    config["prev_follow_hand_mode"] = "scanning"
                     config["follow_hand_mode"] = "off"
                     with open("config.json", "w") as json_file:
                         json.dump(config, json_file, indent=4)

@@ -13,7 +13,7 @@ def run_worker():
     time.sleep(15)                                        
                                                                                 
 def main():
-    pool = Pool(processes=3, initializer=init_worker)                                                
+    pool = Pool(processes=4, initializer=init_worker)                                                
     processes = ('./gesture_peace.py', './gesture_ok.py', './gesture_wave.py', './gesture_closed_hand.py')                                    
     pool.map(run_process, processes)    
     try:

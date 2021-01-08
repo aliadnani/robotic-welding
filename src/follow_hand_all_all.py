@@ -12,6 +12,7 @@ import math3d as m3d
 from scipy.spatial.transform import Rotation as R
 import traceback
 import json
+import pandas as pd
 
 np.set_printoptions(precision=4, suppress=True)
 
@@ -214,7 +215,7 @@ def main():
     time.sleep(1)
 
     # Set up tool TCP to sealer position
-    # Will result in wrong hand position but correct sealer position, no effect on usage  
+    # Will result in wrong hand position but correct sealer position, no effect on usage
     mytcp = m3d.Transform()
     mytcp.pos.x = -0.0002
     mytcp.pos.y = -0.09302
@@ -224,12 +225,26 @@ def main():
     previous_palm_position = ("ahahahaha", "haha")
     config = read_config_file()
     last_config_poll_time = 0
+    last_data_time = 0
+    tool_position_time_series = []
     while 1:
         if time.time() - last_config_poll_time > 1:
             last_config_poll_time = time.time()
             config = read_config_file()
 
         if config["follow_hand_mode"] == "off":
+            if (
+                    config["prev_follow_hand_mode"] == "scanning"
+                    and config["written_to_excel"] == False
+                ):
+                    df = pd.DataFrame(
+                        tool_position_time_series,
+                        columns=["X", "Y", "Z", "Rx", "Ry", "Rz", "time"],
+                    )
+                    df.to_excel("tracking_data.xlsx")
+                    config["written_to_excel"] = True
+                    with open("config.json", "w") as json_file:
+                        json.dump(config, json_file, indent=4)
             time.sleep(1.1)
             continue
         try:
@@ -260,7 +275,6 @@ def main():
                     print("Fully open your hand to track :)")
             else:
                 # Rotation object from base to TCP
-                rotation_object = calculate_rotation_object(tool_pose[3:]).inv()
                 rotation_object = calculate_rotation_object(tool_pose[3:])
 
                 # Orientation around Y axis for calculating absolute hand pose below is not working!!!
@@ -279,9 +293,10 @@ def main():
 
                 # Here we determine which kind of hand-tracking mode we are to use:
                 # i.e.: robot positioning (yaw only) or groove 2dof (yaw and roll)
-                if config["follow_hand_mode"] == "2dof" or 'scanning':
+                if config["follow_hand_mode"] == "2dof":
                     wanted_basis_final = get_basis_2dof(wanted_basis)
-
+                elif config["follow_hand_mode"] == "scanning":
+                    wanted_basis_final = get_basis_2dof(wanted_basis)
                 elif config["follow_hand_mode"] == "positioning":
                     wanted_basis_final = get_basis_positioning(wanted_basis)
 
@@ -317,13 +332,16 @@ def main():
                 position_difference = np.linalg.norm(
                     np.array(tool_pose[:3]) - np.array(required_robot_position)
                 )
-                # print(get_tool_position(mytcp, robot))
-
+                if config["follow_hand_mode"] == "scanning":
+                    if  time.time() - last_data_time > 0.2:
+                        last_data_time = time.time()
+                        tool_pose.append(time.time())
+                        tool_position_time_series.append(tool_pose)
                 print("Tool position: %s" % (tool_pose[:3]))
                 print("angular difference: %s" % (angular_difference))
                 print("position difference: %s" % (position_difference))
                 if angular_difference > 2 or position_difference > 0.005:
-                    robot.movep(final_pose, acc=0.07, vel=0.07, wait=False)
+                    robot.movep(final_pose, acc=0.06, vel=0.06, wait=False)
                 else:
                     print(
                         "position/angular difference not big enough, robot not moved!"

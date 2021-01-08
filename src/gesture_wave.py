@@ -111,6 +111,7 @@ def main():
             print("\nHand wave detected! :) \n")
             config = read_config_file()
             config['prev_follow_hand_mode'] = 'off'
+            config["written_to_excel"] = False
             config['follow_hand_mode'] = 'positioning'
             with open("config.json", "w") as json_file:
                 json.dump(config, json_file, indent=4)

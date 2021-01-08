@@ -164,7 +164,7 @@ def read_config_file():
     return config
 
 
-def get_basis_scanning(wanted_basis):
+def get_basis_2dof(wanted_basis):
     # X-orientation of hand pose in previous step is broken
     # We ignore it by setting the top right matrix element to 0
     wanted_basis_final = wanted_basis
@@ -213,11 +213,12 @@ def main():
     robot = urx.Robot("192.168.0.2")
     time.sleep(1)
 
-    # Set up tool TCP to leap motion position
+    # Set up tool TCP to sealer position
+    # Will result in wrong hand position but correct sealer position, no effect on usage  
     mytcp = m3d.Transform()
     mytcp.pos.x = -0.0002
-    mytcp.pos.y = -0.144
-    mytcp.pos.z = 0.05
+    mytcp.pos.y = -0.09302
+    mytcp.pos.z = 0.32591
     robot.set_tcp(mytcp)
     frame_list = []
     previous_palm_position = ("ahahahaha", "haha")
@@ -277,9 +278,9 @@ def main():
                 wanted_basis[1] = wanted_basis[1] * -1
 
                 # Here we determine which kind of hand-tracking mode we are to use:
-                # i.e.: robot positioning (yaw only) or groove scanning (yaw and roll)
-                if config["follow_hand_mode"] == "scanning":
-                    wanted_basis_final = get_basis_scanning(wanted_basis)
+                # i.e.: robot positioning (yaw only) or groove 2dof (yaw and roll)
+                if config["follow_hand_mode"] == "2dof" or 'scanning':
+                    wanted_basis_final = get_basis_2dof(wanted_basis)
 
                 elif config["follow_hand_mode"] == "positioning":
                     wanted_basis_final = get_basis_positioning(wanted_basis)
@@ -316,6 +317,9 @@ def main():
                 position_difference = np.linalg.norm(
                     np.array(tool_pose[:3]) - np.array(required_robot_position)
                 )
+                # print(get_tool_position(mytcp, robot))
+
+                print("Tool position: %s" % (tool_pose[:3]))
                 print("angular difference: %s" % (angular_difference))
                 print("position difference: %s" % (position_difference))
                 if angular_difference > 2 or position_difference > 0.005:
@@ -324,9 +328,9 @@ def main():
                     print(
                         "position/angular difference not big enough, robot not moved!"
                     )
-                # print(wanted_basis_final)
-                # print(list(wanted_rotation_vector))
-                # print("\n--------------------------------------\n")
+                print(wanted_basis_final)
+                print(list(wanted_rotation_vector))
+                print("\n--------------------------------------\n")
 
         # except Exception:
         except:

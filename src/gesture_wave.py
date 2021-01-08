@@ -110,6 +110,7 @@ def main():
         if wave_detected:
             print("\nHand wave detected! :) \n")
             config = read_config_file()
+            config['prev_follow_hand_mode'] = 'off'
             config['follow_hand_mode'] = 'positioning'
             with open("config.json", "w") as json_file:
                 json.dump(config, json_file, indent=4)
@@ -124,5 +125,5 @@ def main():
             print("No hand wave detected :(")
         
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+main()

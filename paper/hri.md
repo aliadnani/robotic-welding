@@ -71,13 +71,32 @@ plot(time_series_hand_angles)
 signal_frequency, singal_amplitude = signal_analysis(time_series_hand_angles)
 if (
     signal_freqency > detection_threshold_1
-    and hand_wave_detection_threshold > detection_threshold_2
+    and signal_amplitude > detection_threshold_2
 ):
     hand_wave_detected = True
 
 ```
 
 # Robot Tracking algorithm
+
+The previously discussed hand gestures are used to set the following robot tracking modes.
+
+## Interaction Workflow
+
+1. Robot is stopped
+   1. Wave to the Leap Motion sensor to enable 'positioning' mode
+   2. 'Positioning' mode is a fast 1 DOF (yaw) robot control mode that tracks your palm position and normal and is used to quickly position the robot close to the groove to be welded
+2. Robot is positioning
+   1. Make a peace sign to start '2DOF mode'
+   2. '2DOF' mode is a slower 2 DOF (yaw & pitch) robot that tracks your palm position, normal and fingers' direction to accurately maneuver the robot to scan a 3D point cloud of the groove.
+3. Robot is positioning in 2DOF
+   1. When you want to start recording the position & orientation of the tool,make an OK sign
+4. Robot is in scanning mode
+   1. Also 2DOF tracking
+   2. When you want to stop scanning, close your hand into a fist. The scanning results will be written to an excel file.
+
+The pseudo-code for the robot tracking algorithm is as follows:
+
 
 ```python
 # Measure the pose (position & orientation) of the hand relative to the Leap Motion Controller
@@ -94,7 +113,7 @@ absolute_hand_pose = get_absolute_hand_pose(robot_pose, relative_hand_pose)
 hand_basis = calculate_coordinate_system(absolute_hand_pose)
 
 # Derive a wanted basis of the robot mirroring the hand basis
-wanted_robot_basis = calculate_wanted_basis(absolute_hand_pose)
+wanted_robot_basis = calculate_wanted_basis(absolute_hand_pose, robot_tracking_mode)
 
 # Convert the wanted basis into a roation vector
 wanted_robot_rotation_vector = calculate_rotation_vector(wanted_robot_basis)
@@ -106,6 +125,7 @@ wanted_robot_position = calculate_wanted_robot_position(absolute_hand_pose, robo
 move_robot(wanted_robot_position, wanted_robot_position)
 ```
 
+The `calculate_wanted_basis()` function calculates the basis based on on the robot tracking mode and modifies the basis matrix to achieve 1 or 2 degrees of freedom by setting certain columns, rows, or elements to zero or one.
 
 
 

@@ -23,7 +23,7 @@
    1. When you want to start recording the position & orientation of the tool,make an OK sign
 4. Robot is in scanning mode
    1. Also 2DOF tracking
-   2. When you want to stop scanning, close your hand into a fist. The scanning results will be outputted as an excel file.
+   2. When you want to stop scanning, close your hand into a fist. The scanning results will be written to an excel file.
 
 ## Quick-start Guide
 1. Make sure all the prerequisites are fulfilled

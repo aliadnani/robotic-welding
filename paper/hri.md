@@ -43,7 +43,11 @@ By tracking the hand's pose over time, dynamic gestures can be recognized as wel
 
 ### Hand wave
 
-The hand's direction vector, i.e. the direction from palm to fingers, projected to the Leap Motion Controller's XY plane can be tracked over time and represented as a changing angle. When plotted, it looks like this.
+The hand's direction vector, i.e. the direction from palm to fingers, projected to the Leap Motion Controller's XY plane can be tracked over time and represented as a changing angle relative to an arbitrary initial angle.
+
+![](./hand_wave_diagram.png)
+
+When plotted, it looks like the following:
 
 ![](Figure_1.png)
 

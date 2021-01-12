@@ -8,49 +8,34 @@ The Leap Motion controller makes use of infrared cameras and software algorithms
 
 ## Static Gestures
 
-By tracking the hand's pose at one instant, static gestures can be recognized.
+By analyzing the hand's pose at one instant, static gestures can be identified based on specified conditions.
 
 ### Hand open
-```python
-# All fingers extended.
-if len(fingers_extended_list) == 5:
-  hand_open_gesture = True
-```
+
+All fingers extended.
+
+![](gesture_open_hand.png)
+
 
 ### Hand Closed
 
-```python
-# All fingers retracted.
-if len(fingers_extended_list) == 0:
-  hand_closed_gesture = True
-```
+All fingers retracted.
+
+![](./gesture_closed_hand.png)
+
 
 ### OK Sign
 
-```python
-# Thumb and index finger retracted and distance is smaller than 30mm. Middle, ring, pinky finger extended
-if (
-    middle in fingers_extended_list
-    and pinky in fingers_extended_list
-    and ring in fingers_extended_list
-    and index_thumb_distance < 30 # Milimeteres
-):
-    ok_sign_gesture = True
+Thumb and index finger retracted and distance is smaller than 30mm. Middle, ring, pinky finger extended
 
-```
+![](gesture_ok.png)
+
 
 ### Peace Sign
 
-```python
-# Middle and index finger extended and distance is smaller than 30mm. Thumb, ring, pinky finger retracted.
-if (
-    thumb not in fingers_extended_list
-    and ring not in fingers_extended_list
-    and pinky not in fingers_extended_list
-    and index_middle_finger_distance < 30 # Milimeteres
-):
-    peace_sign_gesture = True
-```
+Middle and index finger extended and distance is smaller than 30mm. Thumb, ring, pinky finger retracted.
+
+![](gesture_peace.png)
 
 ## Dynamic Gestures
 
@@ -97,6 +82,33 @@ The previously discussed hand gestures are used to set the following robot track
 
 The pseudo-code for the robot tracking algorithm is as follows:
 
+**IEEE**
+
+
+```
+------------------------------------
+Algorithm: UR3 Arm Hand Tracking
+------------------------------------
+Inputs: 
+    Robot Pose: P_Robot
+    Leap Motion Camera Pose wrt. Robot Wrist: P_LM
+    Hand Pose (Relative to Leap Motion): P_Hand_Relative
+Output:
+    New Robot Pose: P'_Robot
+1. While 1:
+2.     Compute Transformation Matrix (T) from P_Robot and P_LM
+3.     Calculate the Absolute Hand Pose wrt. Robot Base (P_Hand_Absolute) using T
+4.     Calculate a basis (B_Hand) based on P_Hand_Absolute
+5.     Calculate the new wanted basis of the robot (B_New_Robot) rotated 180 Degrees about its Z 'looking back' at B_Hand
+6.     Calculate a rotation vector (RotVec_New_robot) from B_New_Robot
+7.     Calculate the new position of the robot (Pos_New_Robot) by projecting a distance (D) along the Y-vector of the hand basis (i.e.: the vector out the palm)
+8.     Derive New Robot Pose: P'_Robot by combining Pos_New_Robot and 8RotVec_New_robot
+9.     Send a move instruction to the UR3 arm with the new robot pose P'_Robot
+10. End While
+
+```
+
+**Python**
 
 ```python
 # Measure the pose (position & orientation) of the hand relative to the Leap Motion Controller

@@ -14,28 +14,28 @@ By analyzing the hand's pose at one instant, static gestures can be identified b
 
 All fingers extended.
 
-![](gesture_open_hand.png)
+<IMG SRC="gesture_open_hand.png" height="400">
 
 
 ### Hand Closed
 
 All fingers retracted.
 
-![](./gesture_closed_hand.png)
+<IMG SRC="./gesture_closed_hand.png" height="400">
 
 
 ### OK Sign
 
 Thumb and index finger retracted and distance is smaller than 30mm. Middle, ring, pinky finger extended
 
-![](gesture_ok.png)
+<IMG SRC="gesture_ok.png" height="400">
 
 
 ### Peace Sign
 
 Middle and index finger extended and distance is smaller than 30mm. Thumb, ring, pinky finger retracted.
 
-![](gesture_peace.png)
+<IMG SRC="gesture_peace.png" height="400">
 
 ## Dynamic Gestures
 
@@ -45,11 +45,11 @@ By tracking the hand's pose over time, dynamic gestures can be recognized as wel
 
 The hand's direction vector, i.e. the direction from palm to fingers, projected to the Leap Motion Controller's XY plane can be tracked over time and represented as a changing angle relative to an arbitrary initial angle.
 
-![](./hand_wave_diagram.png)
+<IMG SRC="./hand_wave_diagram.png" height="400">
 
 When plotted, it looks like the following:
 
-![](Figure_1.png)
+<IMG SRC="Figure_1.png" height="400">
 
 A hand wave can then be characterized as a high amplitude and high frequency signal derived from the hand direction's changing angle.
 

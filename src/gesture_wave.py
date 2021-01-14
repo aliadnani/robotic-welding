@@ -150,8 +150,8 @@ def main():
             config['prev_follow_hand_mode'] = 'off'
             config["written_to_excel"] = False
             config['follow_hand_mode'] = 'positioning'
-            # with open("config.json", "w") as json_file:
-            #     json.dump(config, json_file, indent=4)
+            with open("config.json", "w") as json_file:
+                json.dump(config, json_file, indent=4)
             time.sleep(1.1)
             # print(time_array)
             plt.plot(time_array_duplicates_removed,corrected_angle_array, "r-")
@@ -159,8 +159,7 @@ def main():
             # plt.plot(troughs, corrected_angle_array[troughs], "o")
             plt.ylabel('Angle Difference from First Measurement (Rad)')
             plt.xlabel('Time (s)')
-            plt.show()
-            break
+            # plt.show()
         else:
             print("No hand wave detected :(")
         

@@ -11,7 +11,7 @@
   - Because the one from pip is not updated :(
 - Python 2.7
 - python-tk
-  - `sudo apt-get install python-tk1
+  - `sudo apt-get install python-tk1`
 - Everything in `requirements.txt`
 
 ## Interaction Workflow

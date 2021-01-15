@@ -5,10 +5,13 @@
 ## Requirements
 
 - Leap Motion SDK & Drivers
+  - https://developer-archive.leapmotion.com/v2
   - the ./lib in this repo specifies windows drivers, please add your own if running Linux/Mac
 - Custom URX Python Package from https://github.com/jkur/python-urx/tree/SW3.5/urx
   - Because the one from pip is not updated :(
 - Python 2.7
+- python-tk
+  - `sudo apt-get install python-tk1
 - Everything in `requirements.txt`
 
 ## Interaction Workflow
@@ -27,7 +30,8 @@
 
 ## Quick-start Guide
 1. Make sure all the prerequisites are fulfilled
-2. In two separate terminal sessions run:
+2. **On Linux:** Make sure Leap Motion Daemon is running `sudo leapd `
+3. In two separate terminal sessions run:
    1. `python ./gesture_handler.py`
    2. `python ./follow_hand_all_all.py`
 

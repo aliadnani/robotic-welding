@@ -340,7 +340,7 @@ def main():
                 print("Tool position: %s" % (tool_pose[:3]))
                 print("angular difference: %s" % (angular_difference))
                 print("position difference: %s" % (position_difference))
-                if angular_difference > 2 or position_difference > 0.005:
+                if angular_difference > 8 or position_difference > 0.025:
                     robot.movep(final_pose, acc=0.06, vel=0.06, wait=False)
                 else:
                     print(
